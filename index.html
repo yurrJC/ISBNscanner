@@ -59,6 +59,16 @@
     let codeReader = null;
     const output = document.getElementById("output");
 
+    function isValidISBN13(isbn) {
+      if (!/^\d{13}$/.test(isbn)) return false;
+      let sum = 0;
+      for (let i = 0; i < 12; i++) {
+        sum += parseInt(isbn[i]) * (i % 2 === 0 ? 1 : 3);
+      }
+      const check = (10 - (sum % 10)) % 10;
+      return check === parseInt(isbn[12]);
+    }
+
     async function startScanner() {
       if (!isbnKey) {
         isbnKey = sessionStorage.getItem("isbnKey");
@@ -85,12 +95,7 @@
         await navigator.mediaDevices.getUserMedia(constraints);
 
         const hints = new Map();
-        const formats = [
-          ZXing.BarcodeFormat.EAN_13,
-          ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.UPC_E
-        ];
+        const formats = [ZXing.BarcodeFormat.ALL_1D];
         hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
@@ -98,14 +103,22 @@
 
         output.innerHTML = "🔍 Scanning... Hold the barcode in the frame.";
 
-        codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
-          if (result) {
-            codeReader.reset();
-            fetchBookDetails(result.text);
-          } else if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error("Scanning error:", err);
-          }
-        });
+        // Add 500ms delay to allow camera to autofocus
+        setTimeout(() => {
+          codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
+            if (result) {
+              const isbn = result.text;
+              if (isValidISBN13(isbn)) {
+                codeReader.reset();
+                fetchBookDetails(isbn);
+              } else {
+                console.warn("Invalid ISBN-13 detected, continuing scan...");
+              }
+            } else if (err && !(err instanceof ZXing.NotFoundException)) {
+              console.error("Scanning error:", err);
+            }
+          });
+        }, 500);
 
       } catch (e) {
         console.error("Camera access error:", e);
