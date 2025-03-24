@@ -15,22 +15,23 @@
     #scanner-container {
       position: relative;
       width: 100%;
-      max-width: 400px;
+      max-width: 500px;
       margin: 0 auto;
+      display: none;
     }
     video {
       width: 100%;
       height: auto;
       border-radius: 10px;
-      transform: scale(1.2);
+      transform: scale(1.3);
       transform-origin: center center;
     }
     #overlay {
       position: absolute;
-      top: 35%;
+      top: 20%;
       left: 50%;
-      width: 60%;
-      height: 20%;
+      width: 90%;
+      height: 40%;
       border: 2px solid #00cc99;
       border-radius: 6px;
       transform: translate(-50%, 0);
@@ -49,85 +50,64 @@
     <div id="overlay"></div>
   </div>
   <div>
-    <button onclick="initCamera()">Start Camera</button>
-    <button onclick="scanBarcode()">📸 Scan ISBN</button>
-    <button onclick="resetApp()">Reset</button>
+    <button onclick="startScanner()">📷 Scan ISBN</button>
+    <button onclick="resetApp()">🔁 Reset</button>
   </div>
   <div class="output" id="output"></div>
 
   <script>
     let isbnKey = "";
-    let codeReader = null;
     const output = document.getElementById("output");
+    const scannerContainer = document.getElementById("scanner-container");
+    const video = document.getElementById("video");
+    let codeReader;
 
-    function isValidISBN13(isbn) {
-      if (!/^\d{13}$/.test(isbn)) return false;
-      let sum = 0;
-      for (let i = 0; i < 12; i++) {
-        sum += parseInt(isbn[i]) * (i % 2 === 0 ? 1 : 3);
-      }
-      const check = (10 - (sum % 10)) % 10;
-      return check === parseInt(isbn[12]);
-    }
-
-    async function initCamera() {
+    window.onload = function () {
+      isbnKey = sessionStorage.getItem("isbnKey");
       if (!isbnKey) {
-        isbnKey = sessionStorage.getItem("isbnKey");
-        if (!isbnKey) {
-          isbnKey = prompt("Enter your ISBNdb API key:");
-          if (isbnKey) {
-            sessionStorage.setItem("isbnKey", isbnKey);
-          } else {
-            output.innerHTML = "❌ API key is required to use the scanner.";
-            return;
-          }
+        isbnKey = prompt("Enter your ISBNdb API key:");
+        if (isbnKey) {
+          sessionStorage.setItem("isbnKey", isbnKey);
+        } else {
+          output.innerHTML = "❌ API key is required to use the scanner.";
         }
       }
+    };
 
+    async function startScanner() {
+      output.innerHTML = "🔄 Accessing camera...";
+      scannerContainer.style.display = "block";
       try {
-        const constraints = {
-          video: {
-            facingMode: "environment",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        };
+        codeReader = new ZXing.BrowserMultiFormatReader();
 
-        await navigator.mediaDevices.getUserMedia(constraints);
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        const selectedDeviceId = devices.length ? devices[0].deviceId : null;
+        if (!selectedDeviceId) throw new Error("No video input devices found.");
 
         const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.ALL_1D]);
+        const formats = [ZXing.BarcodeFormat.EAN_13];
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
         codeReader = new ZXing.BrowserMultiFormatReader(hints);
-        await codeReader.reset();
 
-        await codeReader.decodeFromVideoDevice(undefined, "video", () => {});
-        output.innerHTML = "✅ Camera is ready. Aim at the barcode and press 'Scan ISBN'.";
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+          if (result) {
+            const isbn = result.text;
+            codeReader.reset();
+            video.srcObject.getTracks().forEach(track => track.stop());
+            scannerContainer.style.display = "none";
+            fetchBookDetails(isbn);
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+            output.innerHTML = "❌ Failed to scan ISBN. Please try again.";
+          }
+        });
+
       } catch (e) {
-        console.error("Camera access error:", e);
-        output.innerHTML = `❌ Camera access failed: ${e.message}.<br>Please ensure HTTPS and allow camera permissions.`;
-      }
-    }
-
-    async function scanBarcode() {
-      if (!codeReader) {
-        output.innerHTML = "❌ Please start the camera first.";
-        return;
-      }
-
-      try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, "video");
-        const isbn = result.text;
-
-        if (isValidISBN13(isbn)) {
-          fetchBookDetails(isbn);
-        } else {
-          output.innerHTML = `❌ Detected value is not a valid ISBN: ${isbn}`;
-        }
-      } catch (e) {
-        console.error("Scan failed:", e);
-        output.innerHTML = "❌ Failed to scan. Make sure the barcode is clear and try again.";
+        console.error(e);
+        output.innerHTML = "❌ Error accessing camera. Please ensure permissions are granted.";
       }
     }
 
@@ -155,24 +135,23 @@
           <a href="${soldURL}" target="_blank">📈 View Sold Listings</a>
         `;
       } catch (err) {
-        console.error(err);
         output.innerHTML = "❌ Book not found or invalid ISBN.";
       }
     }
 
     function resetApp() {
       output.innerHTML = "";
-      if (codeReader) {
-        codeReader.reset();
-      }
+      scannerContainer.style.display = "none";
     }
 
     function copyText(text) {
-      navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
+      navigator.clipboard.writeText(text);
+      alert("Copied: " + text);
     }
   </script>
 </body>
 </html>
+
 
 
 
