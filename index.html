@@ -11,16 +11,43 @@
   <meta name="theme-color" content="#ffffff" />
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; text-align: center; }
-    video { width: 100%; max-width: 400px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; }
-    button, input { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+    body { font-family: sans-serif; padding: 20px; text-align: center; background: #f4f4f4; color: #333; }
+    #scanner-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    video {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      transform: scale(1.1);
+      transform-origin: center center;
+    }
+    #overlay {
+      position: absolute;
+      top: 35%;
+      left: 50%;
+      width: 60%;
+      height: 20%;
+      border: 2px solid #00cc99;
+      border-radius: 6px;
+      transform: translate(-50%, 0);
+      pointer-events: none;
+      box-shadow: 0 0 10px #00cc99;
+    }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
     .output { margin-top: 20px; word-wrap: break-word; }
-    a { display: block; margin: 8px 0; font-size: 16px; }
+    .output a, .output button { display: block; margin: 8px auto; font-size: 16px; }
   </style>
 </head>
 <body>
   <h2>📚 ISBN Book Scanner</h2>
-  <video id="video" autoplay muted playsinline></video>
+  <div id="scanner-container">
+    <video id="video" autoplay muted playsinline></video>
+    <div id="overlay"></div>
+  </div>
   <div>
     <button onclick="startScanner()">Start Scanning</button>
     <button onclick="resetApp()">Reset</button>
@@ -29,8 +56,8 @@
 
   <script>
     let isbnKey = "";
+    let codeReader = null;
     const output = document.getElementById("output");
-    let codeReader;
 
     window.onload = function () {
       isbnKey = sessionStorage.getItem("isbnKey");
@@ -46,26 +73,32 @@
 
     async function startScanner() {
       if (!isbnKey) return;
+
       try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+
         codeReader = new ZXing.BrowserMultiFormatReader();
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
 
-        const videoConstraints = {
-          video: {
-            facingMode: { exact: "environment" }
-          }
-        };
+        if (!devices.length) throw new Error("No camera devices found.");
 
-        await codeReader.decodeFromConstraints(videoConstraints, "video", async (result, err) => {
+        const selectedDeviceId = devices[0].deviceId;
+
+        output.innerHTML = "Scanning...";
+
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, "video", (result, err) => {
           if (result) {
             const isbn = result.text;
             codeReader.reset();
             fetchBookDetails(isbn);
+          } else if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error("ZXing error:", err);
           }
         });
 
       } catch (e) {
-        console.error(e);
-        output.innerHTML = "Error accessing camera or no camera found. Please ensure you're using HTTPS and allowed camera access.";
+        console.error("Camera access error:", e);
+        output.innerHTML = `❌ Camera access failed: ${e.message}.<br>Please ensure HTTPS and allow camera permissions.`;
       }
     }
 
@@ -93,22 +126,25 @@
           <a href="${soldURL}" target="_blank">📈 View Sold Listings</a>
         `;
       } catch (err) {
+        console.error(err);
         output.innerHTML = "❌ Book not found or invalid ISBN.";
       }
     }
 
     function resetApp() {
       output.innerHTML = "";
-      startScanner();
+      if (codeReader) {
+        codeReader.reset();
+      }
     }
 
     function copyText(text) {
-      navigator.clipboard.writeText(text);
-      alert("Copied: " + text);
+      navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
     }
   </script>
 </body>
 </html>
+
 
 
 
