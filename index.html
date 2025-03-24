@@ -76,9 +76,7 @@
       try {
         const constraints = {
           video: {
-            facingMode: { exact: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            facingMode: "environment"
           }
         };
 
@@ -98,14 +96,11 @@
 
         output.innerHTML = "🔍 Scanning... Hold the barcode in the frame.";
 
-        codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
-          if (result) {
-            codeReader.reset();
-            fetchBookDetails(result.text);
-          } else if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error("Scanning error:", err);
-          }
-        });
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, "video");
+        if (result) {
+          codeReader.reset();
+          fetchBookDetails(result.text);
+        }
 
       } catch (e) {
         console.error("Camera access error:", e);
