@@ -11,39 +11,45 @@
   <meta name="theme-color" content="#ffffff" />
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
-    body { font-family: sans-serif; padding: 0; margin: 0; text-align: center; background: #000; color: white; }
-    video { width: 100vw; height: 100vh; object-fit: cover; }
+    body { font-family: sans-serif; padding: 20px; text-align: center; background: #f4f4f4; color: #333; }
+    #scanner-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    video {
+      width: 100%;
+      border-radius: 10px;
+      transform: scale(1.3);
+      transform-origin: center center;
+    }
     #overlay {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 80vw;
-      height: 40vw;
-      border: 2px solid #00ffcc;
-      border-radius: 8px;
+      width: 80%;
+      height: 30%;
+      border: 2px solid #00cc99;
+      border-radius: 6px;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 20px #00ffcc;
+      pointer-events: none;
     }
-    .controls {
-      position: absolute;
-      top: 10px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      z-index: 10;
-    }
-    button { padding: 10px 20px; margin: 5px; font-size: 16px; }
-    .output { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+    .output { margin-top: 20px; word-wrap: break-word; }
     .output a, .output button { display: block; margin: 8px auto; font-size: 16px; }
   </style>
 </head>
 <body>
-  <div class="controls">
+  <h2>📚 ISBN Book Scanner</h2>
+  <div id="scanner-container">
+    <video id="video" autoplay muted playsinline></video>
+    <div id="overlay"></div>
+  </div>
+  <div>
     <button onclick="startScanner()">Start Scanning</button>
     <button onclick="resetApp()">Reset</button>
   </div>
-  <video id="video" autoplay muted playsinline></video>
-  <div id="overlay"></div>
   <div class="output" id="output"></div>
 
   <script>
@@ -70,12 +76,6 @@
 
         const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
         const selectedDeviceId = devices.length ? devices[0].deviceId : null;
-
-        const videoElement = document.getElementById("video");
-        if (videoElement && videoElement.style) {
-          videoElement.style.transform = "scale(1.3)";
-          videoElement.style.transformOrigin = "center center";
-        }
         if (!selectedDeviceId) throw new Error("No video input devices found.");
 
         const hints = new Map();
