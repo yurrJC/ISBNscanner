@@ -49,7 +49,8 @@
     <div id="overlay"></div>
   </div>
   <div>
-    <button onclick="startScanner()">Start Scanning</button>
+    <button onclick="initCamera()">Start Camera</button>
+    <button onclick="scanBarcode()">📸 Scan ISBN</button>
     <button onclick="resetApp()">Reset</button>
   </div>
   <div class="output" id="output"></div>
@@ -69,7 +70,7 @@
       return check === parseInt(isbn[12]);
     }
 
-    async function startScanner() {
+    async function initCamera() {
       if (!isbnKey) {
         isbnKey = sessionStorage.getItem("isbnKey");
         if (!isbnKey) {
@@ -95,34 +96,38 @@
         await navigator.mediaDevices.getUserMedia(constraints);
 
         const hints = new Map();
-        const formats = [ZXing.BarcodeFormat.ALL_1D];
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.ALL_1D]);
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
         codeReader = new ZXing.BrowserMultiFormatReader(hints);
+        await codeReader.reset();
 
-        output.innerHTML = "🔍 Scanning... Hold the barcode in the frame.";
-
-        // Add 500ms delay to allow camera to autofocus
-        setTimeout(() => {
-          codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
-            if (result) {
-              const isbn = result.text;
-              if (isValidISBN13(isbn)) {
-                codeReader.reset();
-                fetchBookDetails(isbn);
-              } else {
-                console.warn("Invalid ISBN-13 detected, continuing scan...");
-              }
-            } else if (err && !(err instanceof ZXing.NotFoundException)) {
-              console.error("Scanning error:", err);
-            }
-          });
-        }, 500);
-
+        await codeReader.decodeFromVideoDevice(undefined, "video", () => {});
+        output.innerHTML = "✅ Camera is ready. Aim at the barcode and press 'Scan ISBN'.";
       } catch (e) {
         console.error("Camera access error:", e);
         output.innerHTML = `❌ Camera access failed: ${e.message}.<br>Please ensure HTTPS and allow camera permissions.`;
+      }
+    }
+
+    async function scanBarcode() {
+      if (!codeReader) {
+        output.innerHTML = "❌ Please start the camera first.";
+        return;
+      }
+
+      try {
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, "video");
+        const isbn = result.text;
+
+        if (isValidISBN13(isbn)) {
+          fetchBookDetails(isbn);
+        } else {
+          output.innerHTML = `❌ Detected value is not a valid ISBN: ${isbn}`;
+        }
+      } catch (e) {
+        console.error("Scan failed:", e);
+        output.innerHTML = "❌ Failed to scan. Make sure the barcode is clear and try again.";
       }
     }
 
@@ -168,6 +173,7 @@
   </script>
 </body>
 </html>
+
 
 
 
