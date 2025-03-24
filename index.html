@@ -59,20 +59,20 @@
     let codeReader = null;
     const output = document.getElementById("output");
 
-    window.onload = function () {
-      isbnKey = sessionStorage.getItem("isbnKey");
+    async function startScanner() {
+      // Prompt API key if missing
       if (!isbnKey) {
-        isbnKey = prompt("Enter your ISBNdb API key:");
-        if (isbnKey) {
-          sessionStorage.setItem("isbnKey", isbnKey);
-        } else {
-          output.innerHTML = "❌ API key is required to use the scanner.";
+        isbnKey = sessionStorage.getItem("isbnKey");
+        if (!isbnKey) {
+          isbnKey = prompt("Enter your ISBNdb API key:");
+          if (isbnKey) {
+            sessionStorage.setItem("isbnKey", isbnKey);
+          } else {
+            output.innerHTML = "❌ API key is required to use the scanner.";
+            return;
+          }
         }
       }
-    };
-
-    async function startScanner() {
-      if (!isbnKey) return;
 
       try {
         await navigator.mediaDevices.getUserMedia({ video: true });
@@ -154,6 +154,7 @@
   </script>
 </body>
 </html>
+
 
 
 
