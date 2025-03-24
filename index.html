@@ -1,0 +1,94 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISBN Scanner</title>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; text-align: center; }
+    video { width: 100%; max-width: 400px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; }
+    button, input { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+    .output { margin-top: 20px; word-wrap: break-word; }
+    a { display: block; margin: 8px 0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>📚 ISBN Book Scanner</h2>
+  <video id="video" autoplay muted playsinline></video>
+  <div>
+    <button onclick="startScanner()">Start Scanning</button>
+    <button onclick="resetApp()">Reset</button>
+  </div>
+  <div class="output" id="output"></div>
+
+  <script>
+    const isbnKey = "59236_117c08f4331e561bdd84674d1e3f4235";
+    const output = document.getElementById("output");
+    let codeReader;
+
+    async function startScanner() {
+      try {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+
+        const videoConstraints = {
+          video: {
+            facingMode: { exact: "environment" }
+          }
+        };
+
+        await codeReader.decodeFromConstraints(videoConstraints, "video", async (result, err) => {
+          if (result) {
+            const isbn = result.text;
+            codeReader.reset();
+            fetchBookDetails(isbn);
+          }
+        });
+
+      } catch (e) {
+        console.error(e);
+        output.innerHTML = "Error accessing camera or no camera found. Please ensure you're using HTTPS and allowed camera access.";
+      }
+    }
+
+    async function fetchBookDetails(isbn) {
+      try {
+        const res = await fetch("https://api2.isbndb.com/book/" + isbn, {
+          headers: { Authorization: isbnKey },
+        });
+
+        if (!res.ok) throw new Error("Book not found");
+
+        const data = await res.json();
+        const title = data.book.title;
+        const author = data.book.authors[0];
+        const searchString = `${title} ${author}`;
+
+        const encodedSearch = encodeURIComponent(searchString);
+        const soldURL = `https://www.ebay.com.au/sch/i.html?_nkw=${encodedSearch}&_sacat=267&LH_Complete=1&LH_Sold=1&LH_PrefLoc=1&_sop=13`;
+        const activeURL = `https://www.ebay.com.au/sch/i.html?_nkw=${encodedSearch}&_sacat=267&LH_PrefLoc=1&LH_Sold=0&_sop=15`;
+
+        output.innerHTML = `
+          <h3>📖 ${searchString}</h3>
+          <button onclick="copyText('${searchString}')">📋 Copy Title</button>
+          <a href="${activeURL}" target="_blank">🔎 View Active Listings</a>
+          <a href="${soldURL}" target="_blank">📈 View Sold Listings</a>
+        `;
+      } catch (err) {
+        output.innerHTML = "❌ Book not found or invalid ISBN.";
+      }
+    }
+
+    function resetApp() {
+      output.innerHTML = "";
+      startScanner();
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text);
+      alert("Copied: " + text);
+    }
+  </script>
+</body>
+</html>
