@@ -49,19 +49,27 @@
       try {
         codeReader = new ZXing.BrowserMultiFormatReader();
 
-        const videoConstraints = {
-          video: {
-            facingMode: { exact: "environment" }
-          }
-        };
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        const selectedDeviceId = devices.length ? devices[0].deviceId : null;
+        if (!selectedDeviceId) throw new Error("No video input devices found.");
 
-        await codeReader.decodeFromConstraints(videoConstraints, "video", async (result, err) => {
-          if (result) {
+        const hints = new Map();
+        const formats = [ZXing.BarcodeFormat.EAN_13];
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+        codeReader = new ZXing.BrowserMultiFormatReader(hints);
+
+        await codeReader.decodeOnceFromVideoDevice(selectedDeviceId, "video")
+          .then((result) => {
             const isbn = result.text;
             codeReader.reset();
             fetchBookDetails(isbn);
-          }
-        });
+          })
+          .catch((err) => {
+            console.error(err);
+            output.innerHTML = "❌ Failed to scan ISBN. Please try again.";
+          });
 
       } catch (e) {
         console.error(e);
@@ -109,3 +117,4 @@
   </script>
 </body>
 </html>
+
