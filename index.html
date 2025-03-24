@@ -56,8 +56,8 @@
 
   <script>
     let isbnKey = "";
+    let codeReader = null;
     const output = document.getElementById("output");
-    let codeReader;
 
     window.onload = function () {
       isbnKey = sessionStorage.getItem("isbnKey");
@@ -73,34 +73,30 @@
 
     async function startScanner() {
       if (!isbnKey) return;
+
       try {
         codeReader = new ZXing.BrowserMultiFormatReader();
-
         const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-        const selectedDeviceId = devices.length ? devices[0].deviceId : null;
-        if (!selectedDeviceId) throw new Error("No video input devices found.");
 
-        const hints = new Map();
-        const formats = [ZXing.BarcodeFormat.EAN_13];
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        if (!devices.length) throw new Error("No camera devices found.");
 
-        codeReader = new ZXing.BrowserMultiFormatReader(hints);
+        const selectedDeviceId = devices[0].deviceId;
 
-        await codeReader.decodeOnceFromVideoDevice(selectedDeviceId, "video")
-          .then((result) => {
+        output.innerHTML = "Scanning...";
+
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, "video", (result, err) => {
+          if (result) {
             const isbn = result.text;
             codeReader.reset();
             fetchBookDetails(isbn);
-          })
-          .catch((err) => {
+          } else if (err && !(err instanceof ZXing.NotFoundException)) {
             console.error(err);
-            output.innerHTML = "❌ Failed to scan ISBN. Please try again.";
-          });
+          }
+        });
 
       } catch (e) {
         console.error(e);
-        output.innerHTML = "Error accessing camera or no camera found. Please ensure you're using HTTPS and allowed camera access.";
+        output.innerHTML = "❌ Error accessing camera. Please ensure you're using HTTPS and granted camera access.";
       }
     }
 
@@ -128,21 +124,24 @@
           <a href="${soldURL}" target="_blank">📈 View Sold Listings</a>
         `;
       } catch (err) {
+        console.error(err);
         output.innerHTML = "❌ Book not found or invalid ISBN.";
       }
     }
 
     function resetApp() {
       output.innerHTML = "";
-      startScanner();
+      if (codeReader) {
+        codeReader.reset();
+      }
     }
 
     function copyText(text) {
-      navigator.clipboard.writeText(text);
-      alert("Copied: " + text);
+      navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
     }
   </script>
 </body>
 </html>
+
 
 
