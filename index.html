@@ -75,6 +75,9 @@
       if (!isbnKey) return;
 
       try {
+        // Request explicit camera access to pre-warm permissions
+        await navigator.mediaDevices.getUserMedia({ video: true });
+
         codeReader = new ZXing.BrowserMultiFormatReader();
         const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
 
@@ -90,13 +93,13 @@
             codeReader.reset();
             fetchBookDetails(isbn);
           } else if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error(err);
+            console.error("ZXing error:", err);
           }
         });
 
       } catch (e) {
-        console.error(e);
-        output.innerHTML = "❌ Error accessing camera. Please ensure you're using HTTPS and granted camera access.";
+        console.error("Camera access error:", e);
+        output.innerHTML = `❌ Camera access failed: ${e.message}.<br>Please ensure HTTPS and allow camera permissions.`;
       }
     }
 
@@ -132,16 +135,7 @@
     function resetApp() {
       output.innerHTML = "";
       if (codeReader) {
-        codeReader.reset();
-      }
-    }
-
-    function copyText(text) {
-      navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
-    }
-  </script>
-</body>
-</html>
+        code
 
 
 
