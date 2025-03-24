@@ -38,9 +38,15 @@
       pointer-events: none;
       box-shadow: 0 0 10px #00cc99;
     }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+    button, input[type="text"] {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
     .output { margin-top: 20px; word-wrap: break-word; }
     .output a, .output button { display: block; margin: 8px auto; font-size: 16px; }
+    .divider { margin-top: 20px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -53,6 +59,13 @@
     <button onclick="startScanner()">📷 Scan ISBN</button>
     <button onclick="resetApp()">🔁 Reset</button>
   </div>
+
+  <div class="divider">— OR —</div>
+  <div>
+    <input type="text" id="manualIsbn" placeholder="Enter ISBN manually" />
+    <button onclick="manualSearch()">🔍 Search</button>
+  </div>
+
   <div class="output" id="output"></div>
 
   <script>
@@ -139,6 +152,11 @@
       }
     }
 
+    function manualSearch() {
+      const isbn = document.getElementById("manualIsbn").value.trim();
+      if (isbn) fetchBookDetails(isbn);
+    }
+
     function resetApp() {
       output.innerHTML = "";
       scannerContainer.style.display = "none";
@@ -151,6 +169,7 @@
   </script>
 </body>
 </html>
+
 
 
 
