@@ -98,11 +98,14 @@
 
         output.innerHTML = "🔍 Scanning... Hold the barcode in the frame.";
 
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, "video");
-        if (result) {
-          codeReader.reset();
-          fetchBookDetails(result.text);
-        }
+        codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
+          if (result) {
+            codeReader.reset();
+            fetchBookDetails(result.text);
+          } else if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error("Scanning error:", err);
+          }
+        });
 
       } catch (e) {
         console.error("Camera access error:", e);
@@ -152,5 +155,6 @@
   </script>
 </body>
 </html>
+
 
 
