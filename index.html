@@ -97,23 +97,19 @@
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
         codeReader = new ZXing.BrowserMultiFormatReader(hints);
-        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-
-        if (!devices.length) throw new Error("No camera devices found.");
-
-        const selectedDeviceId = devices[0].deviceId;
 
         output.innerHTML = "Scanning...";
 
-        await codeReader.decodeFromVideoDevice(selectedDeviceId, "video", (result, err) => {
-          if (result) {
+        await codeReader.decodeOnceFromVideoDevice(undefined, "video")
+          .then(result => {
             const isbn = result.text;
             codeReader.reset();
             fetchBookDetails(isbn);
-          } else if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error("ZXing error:", err);
-          }
-        });
+          })
+          .catch(err => {
+            console.error("Scanning error:", err);
+            output.innerHTML = "❌ Failed to scan ISBN. Please try again.";
+          });
 
       } catch (e) {
         console.error("Camera access error:", e);
@@ -163,12 +159,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
