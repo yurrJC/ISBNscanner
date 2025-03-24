@@ -60,7 +60,6 @@
     const output = document.getElementById("output");
 
     async function startScanner() {
-      // Prompt API key if missing
       if (!isbnKey) {
         isbnKey = sessionStorage.getItem("isbnKey");
         if (!isbnKey) {
@@ -75,7 +74,6 @@
       }
 
       try {
-        // Use rear camera and higher resolution
         const constraints = {
           video: {
             facingMode: { exact: "environment" },
@@ -98,18 +96,16 @@
 
         codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
-        output.innerHTML = "Scanning...";
+        output.innerHTML = "🔍 Scanning... Hold the barcode in the frame.";
 
-        await codeReader.decodeOnceFromVideoDevice(undefined, "video")
-          .then(result => {
-            const isbn = result.text;
+        codeReader.decodeFromVideoDevice(undefined, "video", (result, err) => {
+          if (result) {
             codeReader.reset();
-            fetchBookDetails(isbn);
-          })
-          .catch(err => {
+            fetchBookDetails(result.text);
+          } else if (err && !(err instanceof ZXing.NotFoundException)) {
             console.error("Scanning error:", err);
-            output.innerHTML = "❌ Failed to scan ISBN. Please try again.";
-          });
+          }
+        });
 
       } catch (e) {
         console.error("Camera access error:", e);
@@ -159,3 +155,4 @@
   </script>
 </body>
 </html>
+
